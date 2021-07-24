@@ -8,7 +8,7 @@ pandas
 seaborn
 umap-learn
 colorcet
-sciki-image
+scikit-image
 bokeh
 holoviews
 datashader
