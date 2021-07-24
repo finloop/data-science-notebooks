@@ -148,4 +148,10 @@ kmeans.labels_
 
 umap.plot.points(mapper, labels=kmeans.labels_)
 
+df2
+
+umap.plot.connectivity(mapper, show_points=True)
+
+umap.plot.connectivity(mapper, edge_bundling='hammer')
+
 
