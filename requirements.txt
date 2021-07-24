@@ -2,6 +2,14 @@ torch
 torchvision
 torchaudio
 scikit-learn
+jupyterlab
 jupytext
 pandas
 seaborn
+umap-learn
+colorcet
+sciki-image
+bokeh
+holoviews
+datashader
+yellowbrick
