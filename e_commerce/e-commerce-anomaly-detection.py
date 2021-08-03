@@ -153,13 +153,13 @@ df3.shape
 
 df3
 
-# +
-from yellowbrick.cluster import KElbowVisualizer
-model = KMeans()
-
-visualizer = KElbowVisualizer(model, k=(4,10), timings=True)
-visualizer.fit(df3)
-visualizer.show()
+# + active=""
+# from yellowbrick.cluster import KElbowVisualizer
+# model = KMeans()
+#
+# visualizer = KElbowVisualizer(model, k=(4,10), timings=True)
+# visualizer.fit(df3)
+# visualizer.show()
 # -
 
 from sklearn.cluster import KMeans
@@ -187,6 +187,8 @@ points
 df2["x"] = points[:,0]
 df2["y"] = points[:,1]
 
+df2['y']
+
 df2
 
 countries = df2.groupby('customer_city').count().sort_values('customer_state', ascending=False).iloc[0:10,:].reset_index()['customer_city'].array
@@ -201,5 +203,34 @@ sns.relplot(
 sns.scatterplot(x="x", y="y", data=df2[], hue="customer_city")
 
 df2.columns
+
+smapper = umap.UMAP().fit_transform(X, kmeans.labels_)
+
+# +
+import matplotlib.pyplot as plt
+
+fig, ax = plt.subplots(figsize=(20,10))
+
+sns.scatterplot(x=smapper[:,0], y=smapper[:,1], hue=kmeans.labels_, palette=sns.color_palette("tab10", 6), ax=ax)
+# -
+
+df2['x1'] = smapper[:,0]
+df2['y1'] = smapper[:,1]
+
+# +
+groupby_col="customer_city"
+
+countries = df2.groupby(groupby_col).count().sort_values('customer_state', ascending=False).iloc[0:20,:].reset_index()[groupby_col].array
+
+sns.relplot(
+    data = df2.loc[df2[groupby_col].isin(countries)],
+    x = "x1",
+    y = "y1",
+    hue = groupby_col,
+    height = 12,
+    s=200)
+# -
+
+df2.loc[df2[groupby_col].isin(countries)]
 
 
