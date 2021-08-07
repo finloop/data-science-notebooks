@@ -1,5 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
+# # Data download
+
 # +
 # This Python 3 environment comes with many helpful analytics libraries installed
 # It is defined by the kaggle/python Docker image: https://github.com/kaggle/docker-python
@@ -7,6 +9,7 @@
 
 import numpy as np # linear algebra
 import pandas as pd # data processing, CSV file I/O (e.g. pd.read_csv)
+import lux 
 
 # Input data files are available in the read-only "../input/" directory
 # For example, running this (by clicking run or pressing Shift+Enter) will list all files under the input directory
@@ -31,11 +34,15 @@ orders = pd.read_csv("./data/olist_orders_dataset.csv")
 order_payments = pd.read_csv("./data/olist_order_payments_dataset.csv")
 
 
+# ## Merge datasets
+
 datasets = [customers, sellers, reviews, items, products, geolocation, category_name_translation, orders, order_payments]
 
 df = orders.merge(items, on="order_id").merge(products, on = "product_id").merge(sellers, on="seller_id").merge(customers, on="customer_id")
 
 df.info()
+
+# # Data cleaning
 
 # +
 #date_cols = [order_delivered_customer_date", "order_estimated_delivery_date", "order_purchase_timestamp", "order_delivered_customer_date"]
@@ -44,14 +51,28 @@ df["order_delivered_carrier_date"] = pd.to_datetime(df["order_delivered_carrier_
 df["order_estimated_delivery_date"] = pd.to_datetime(df["order_estimated_delivery_date"])
 df["order_purchase_timestamp"] = pd.to_datetime(df["order_purchase_timestamp"])
 df["order_delivered_customer_date"] = pd.to_datetime(df["order_delivered_customer_date"])
+df['order_approved_at'] = pd.to_datetime(df['order_approved_at'])
+df['shipping_limit_date'] = pd.to_datetime(df['shipping_limit_date'])
 
-df['expected_delivery_timedelta'] = df['order_estimated_delivery_date']- df["order_purchase_timestamp"]
-df['delivery_time'] = df["order_delivered_customer_date"] - df['order_purchase_timestamp']
+df['expected_delivery_timedelta'] = pd.to_numeric(df['order_estimated_delivery_date']- df["order_purchase_timestamp"])
+df['delivery_time'] = pd.to_numeric(df["order_delivered_customer_date"] - df['order_purchase_timestamp'])
 
 df['product_volume'] = df["product_length_cm"] * df["product_height_cm"] * df["product_width_cm"]
 
 df["same_city"] = df["customer_city"] == df["seller_city"]
 df["same_state"] = df["customer_state"] == df["seller_state"]
+
+# +
+#df.drop(["expected_delivery_timedelta"], axis = 1, inplace=True)
+# -
+
+df
+
+df.info()
+
+# ## Detecting outliers in numerical data
+
+
 
 # +
 unique_orders_count = df.groupby(["customer_id"])["order_id"].count() # Count unique orders
@@ -88,10 +109,23 @@ df2[df2["unique_orders_count"] > 1]
 cat_attributes = ["customer_city", "customer_state"]
 num_attributes = ["unique_orders_count", "nof_moest_popular_sales", "max_sale", "median_sale", "sum_sale", "median_volume", "average_delivery_time","average_expected_delivery_time"]
 
-df2['average_expected_delivery_time'] = df2['average_expected_delivery_time'].dt.total_seconds()
-df2['average_delivery_time'] = df2['average_delivery_time'].dt.total_seconds()
+df2['average_expected_delivery_time'] = df2['average_expected_delivery_time']
+df2['average_delivery_time'] = df2['average_delivery_time']
 
-df2.fillna(0)
+df2.fillna(df2.mean(), inplace=True)
+
+df2.info()
+
+df2.groupby("customer_city")["customer_state"].value_counts()
+
+groupby_col="customer_city"
+
+
+other_countes = df2.groupby(groupby_col).count().sort_values('customer_state', ascending=False).iloc[21:,:].reset_index()[groupby_col].array
+
+df2.loc[df2.customer_city.isin(other_countes), "customer_city"] = "other"
+
+df2.customer_city.nunique()
 
 # +
 from sklearn.preprocessing import StandardScaler, OneHotEncoder
@@ -103,20 +137,24 @@ pipeline = ColumnTransformer([
         ('num', StandardScaler(), num_attributes),
         ('cat', OneHotEncoder(), cat_attributes),
 ])
-df_prepared = pipeline.fit_transform(df2.fillna(0))
+df_prepared = pipeline.fit_transform(df2)
 df_prepared
-
-# +
-
+# -
 
 df3 = df_prepared.toarray()
-# -
+
+len(num_attributes)
+
+import lux
+df3
+
+# # UMAP
 
 import umap
 
 import umap.plot
 
-mapper = umap.UMAP().fit(df3)
+mapper = umap.UMAP(densmap=True).fit(df3[:,:8])
 
 umap.plot.points(mapper)
 
@@ -130,6 +168,8 @@ df3.data
 df3.shape
 
 df3
+
+# # KMEANS
 
 # +
 from yellowbrick.cluster import KElbowVisualizer
@@ -147,5 +187,100 @@ kmeans = KMeans(n_clusters=6, random_state=0, copy_x=False, precompute_distances
 kmeans.labels_
 
 umap.plot.points(mapper, labels=kmeans.labels_)
+
+points = mapper.embedding_
+
+points[:,0]
+
+df2
+
+umap.plot.connectivity(mapper, show_points=True, labels=kmeans.labels_)
+
+# + active=""
+# umap.plot.connectivity(mapper, edge_bundling='hammer')
+# -
+
+import seaborn as sns
+
+points
+
+df2["x"] = points[:,0]
+df2["y"] = points[:,1]
+
+df2['y']
+
+df2
+
+countries = df2.groupby('customer_city').count().sort_values('customer_state', ascending=False).iloc[0:10,:].reset_index()['customer_city'].array
+sns.relplot(
+    data = df2.loc[df2['customer_city'].isin(countries)],
+    x = "x",
+    y = "y",
+    hue = 'customer_city',
+    height = 12,
+    s=200)
+
+sns.scatterplot(x="x", y="y", data=df2[], hue="customer_city")
+
+df2.columns
+
+smapper = umap.UMAP().fit_transform(X, kmeans.labels_)
+
+# +
+import matplotlib.pyplot as plt
+
+fig, ax = plt.subplots(figsize=(20,10))
+
+sns.scatterplot(x=smapper[:,0], y=smapper[:,1], hue=kmeans.labels_, palette=sns.color_palette("tab10", 6), ax=ax)
+# -
+
+df2['x1'] = smapper[:,0]
+df2['y1'] = smapper[:,1]
+
+# +
+groupby_col="customer_city"
+
+countries = df2.groupby(groupby_col).count().sort_values('customer_state', ascending=False).iloc[0:20,:].reset_index()[groupby_col].array
+
+sns.relplot(
+    data = df2.loc[df2[groupby_col].isin(countries)],
+    x = "x1",
+    y = "y1",
+    hue = groupby_col,
+    height = 12,
+    s=200)
+# -
+
+df2.loc[df2[groupby_col].isin(countries)]
+
+outlier_scores = sklearn.neighbors.LocalOutlierFactor(contamination=0.001428).fit_predict(mapper.embedding_)
+
+import sklearn
+
+outlier_scores
+
+df2['outlier'] = outlier_scores
+
+df2.describe()
+
+sns.relplot(
+    data = df2,
+    x = "x",
+    y = "y",
+    hue = "outlier",
+    height = 12,
+    s=200)
+
+df.info(0)
+
+
+
+df4 = df.merge(df2, on="customer_unique_id")
+
+sns.pointplot(x="order_purchase_timestamp", y="product_width_cm", data=df4.sample(100), hue='outlier')
+
+sns.boxplot(x="price", data=df.sample(1000))
+
+sns.boxplot(x="product_volume", data=df.sample(1000))
 
 

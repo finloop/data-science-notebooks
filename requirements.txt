@@ -13,3 +13,4 @@ bokeh
 holoviews
 datashader
 yellowbrick
+lux-api
