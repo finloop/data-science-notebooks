@@ -14,3 +14,5 @@ holoviews
 datashader
 yellowbrick
 lux-api
+tensorflow
+keras
