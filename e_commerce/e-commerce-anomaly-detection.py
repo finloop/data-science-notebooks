@@ -68,6 +68,8 @@ df["same_state"] = df["customer_state"] == df["seller_state"]
 
 df
 
+df.info()
+
 # ## Detecting outliers in numerical data
 
 
@@ -110,7 +112,20 @@ num_attributes = ["unique_orders_count", "nof_moest_popular_sales", "max_sale", 
 df2['average_expected_delivery_time'] = df2['average_expected_delivery_time']
 df2['average_delivery_time'] = df2['average_delivery_time']
 
-df2.fillna(0)
+df2.fillna(df2.mean(), inplace=True)
+
+df2.info()
+
+df2.groupby("customer_city")["customer_state"].value_counts()
+
+groupby_col="customer_city"
+
+
+other_countes = df2.groupby(groupby_col).count().sort_values('customer_state', ascending=False).iloc[21:,:].reset_index()[groupby_col].array
+
+df2.loc[df2.customer_city.isin(other_countes), "customer_city"] = "other"
+
+df2.customer_city.nunique()
 
 # +
 from sklearn.preprocessing import StandardScaler, OneHotEncoder
@@ -122,23 +137,24 @@ pipeline = ColumnTransformer([
         ('num', StandardScaler(), num_attributes),
         ('cat', OneHotEncoder(), cat_attributes),
 ])
-df_prepared = pipeline.fit_transform(df2.fillna(0))
+df_prepared = pipeline.fit_transform(df2)
 df_prepared
-
-# +
-
+# -
 
 df3 = df_prepared.toarray()
-# -
+
+len(num_attributes)
 
 import lux
 df3
+
+# # UMAP
 
 import umap
 
 import umap.plot
 
-mapper = umap.UMAP().fit(df3)
+mapper = umap.UMAP(densmap=True).fit(df3[:,:8])
 
 umap.plot.points(mapper)
 
@@ -153,13 +169,15 @@ df3.shape
 
 df3
 
-# + active=""
-# from yellowbrick.cluster import KElbowVisualizer
-# model = KMeans()
-#
-# visualizer = KElbowVisualizer(model, k=(4,10), timings=True)
-# visualizer.fit(df3)
-# visualizer.show()
+# # KMEANS
+
+# +
+from yellowbrick.cluster import KElbowVisualizer
+model = KMeans()
+
+visualizer = KElbowVisualizer(model, k=(4,10), timings=True)
+visualizer.fit(df3)
+visualizer.show()
 # -
 
 from sklearn.cluster import KMeans
@@ -178,7 +196,9 @@ df2
 
 umap.plot.connectivity(mapper, show_points=True, labels=kmeans.labels_)
 
-umap.plot.connectivity(mapper, edge_bundling='hammer')
+# + active=""
+# umap.plot.connectivity(mapper, edge_bundling='hammer')
+# -
 
 import seaborn as sns
 
@@ -232,5 +252,35 @@ sns.relplot(
 # -
 
 df2.loc[df2[groupby_col].isin(countries)]
+
+outlier_scores = sklearn.neighbors.LocalOutlierFactor(contamination=0.001428).fit_predict(mapper.embedding_)
+
+import sklearn
+
+outlier_scores
+
+df2['outlier'] = outlier_scores
+
+df2.describe()
+
+sns.relplot(
+    data = df2,
+    x = "x",
+    y = "y",
+    hue = "outlier",
+    height = 12,
+    s=200)
+
+df.info(0)
+
+
+
+df4 = df.merge(df2, on="customer_unique_id")
+
+sns.pointplot(x="order_purchase_timestamp", y="product_width_cm", data=df4.sample(100), hue='outlier')
+
+sns.boxplot(x="price", data=df.sample(1000))
+
+sns.boxplot(x="product_volume", data=df.sample(1000))
 
 
