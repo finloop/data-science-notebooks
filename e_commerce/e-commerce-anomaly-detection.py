@@ -148,15 +148,32 @@ len(num_attributes)
 import lux
 df3
 
+# # HDBSCAN
+
+import hdbscan
+clusterer = hdbscan.HDBSCAN(min_cluster_size=600, min_samples=80, cluster_selection_epsilon=0.6)
+
+#clusterer.fit(df3[np.random.choice(df3.shape[0],50000, replace=False),:])
+clusterer.fit(df3)
+
+max(clusterer.labels_)
+
+import seaborn as sns
+sns.histplot(clusterer.labels_)
+
 # # UMAP
 
 import umap
 
 import umap.plot
 
-mapper = umap.UMAP(densmap=True).fit(df3[:,:8])
+mapper = umap.UMAP(densmap=True).fit(df3)
 
 umap.plot.points(mapper)
+
+# ## HDBSCAN viz
+
+umap.plot.points(mapper, labels=clusterer.labels_)
 
 mapper2 = umap.UMAP(densmap=True).fit(df3[np.random.choice(df3.shape[0], 10000, replace=False)])
 
@@ -173,18 +190,22 @@ df3
 
 # +
 from yellowbrick.cluster import KElbowVisualizer
+from sklearn.cluster import KMeans
 model = KMeans()
 
-visualizer = KElbowVisualizer(model, k=(4,10), timings=True)
+visualizer = KElbowVisualizer(model, k=(10,30), timings=True)
 visualizer.fit(df3)
 visualizer.show()
 # -
 
-from sklearn.cluster import KMeans
 X = df3
-kmeans = KMeans(n_clusters=6, random_state=0, copy_x=False, precompute_distances=False).fit(X)
+kmeans = KMeans(n_clusters=21, random_state=0, copy_x=False, precompute_distances=False).fit(X)
 
 kmeans.labels_
+
+sns.histplot(kmeans.labels_, bins=max(kmeans.labels_))
+
+# ## Kmeans viz
 
 umap.plot.points(mapper, labels=kmeans.labels_)
 
@@ -220,18 +241,25 @@ sns.relplot(
     height = 12,
     s=200)
 
-sns.scatterplot(x="x", y="y", data=df2[], hue="customer_city")
-
 df2.columns
 
 smapper = umap.UMAP().fit_transform(X, kmeans.labels_)
+
+
 
 # +
 import matplotlib.pyplot as plt
 
 fig, ax = plt.subplots(figsize=(20,10))
 
-sns.scatterplot(x=smapper[:,0], y=smapper[:,1], hue=kmeans.labels_, palette=sns.color_palette("tab10", 6), ax=ax)
+sns.scatterplot(x=smapper[:,0], y=smapper[:,1], hue=kmeans.labels_, ax=ax, palette=sns.color_palette("icefire", 21))
+
+# +
+import matplotlib.pyplot as plt
+
+fig, ax = plt.subplots(figsize=(20,10))
+
+sns.scatterplot(x=mapper.embedding_[:,0], y=mapper.embedding_[:,1], hue=kmeans.labels_, ax=ax, palette=sns.color_palette("icefire", as_cmap=True))
 # -
 
 df2['x1'] = smapper[:,0]
@@ -282,5 +310,128 @@ sns.pointplot(x="order_purchase_timestamp", y="product_width_cm", data=df4.sampl
 sns.boxplot(x="price", data=df.sample(1000))
 
 sns.boxplot(x="product_volume", data=df.sample(1000))
+
+# # Analizing clusters
+
+df2["cluster"] = kmeans.labels_
+
+df2.columns
+
+sns.violinplot(data=df2,x="cluster", y="max_sale")
+
+# For all float columns
+cols = df2.columns[df2.dtypes == "float64"]
+
+import matplotlib.pyplot as plt
+from pylab import *
+
+nrow = 2
+ncol = 4
+fig, axs = plt.subplots(nrow, ncol, figsize=(40,20))
+for i, ax in enumerate(fig.axes):
+    ax.set_ylabel(str(cols[i]))
+    sns.violinplot(data=df2,x="cluster", y=cols[i], ax=ax)
+
+df2.groupby("cluster").mean()
+
+df2.mean()
+
+# +
+# Author: YousefGh
+# Source: https://github.com/YousefGh/kmeans-feature-importance
+
+from sklearn.cluster import KMeans
+import numpy as np
+
+
+class KMeansInterp(KMeans):
+    def __init__(self, ordered_feature_names, feature_importance_method='wcss_min', **kwargs):
+        super(KMeansInterp, self).__init__(**kwargs)
+        self.feature_importance_method = feature_importance_method
+        self.ordered_feature_names = ordered_feature_names
+        
+    def fit(self, X, y=None, sample_weight=None):
+        super().fit(X=X, y=y, sample_weight=sample_weight)
+        
+        if not len(self.ordered_feature_names) == self.n_features_in_:
+            raise Exception(f"Model is fitted on {self.n_features_in_} but ordered_feature_names = {len(self.ordered_feature_names)}")
+        
+        if self.feature_importance_method == "wcss_min":
+            self.feature_importances_ = self.get_feature_imp_wcss_min()
+        elif self.feature_importance_method == "unsup2sup":
+            self.feature_importances_ = self.get_feature_imp_unsup2sup(X)
+        else: 
+            raise Exception(f" {self.feature_importance_method}"+\
+            "is not available. Please choose from  ['wcss_min' , 'unsup2sup']")
+        
+        return self
+        
+    def get_feature_imp_wcss_min(self):
+        labels = self.n_clusters
+        centroids = self.cluster_centers_
+        centroids = np.vectorize(lambda x: np.abs(x))(centroids)
+        sorted_centroid_features_idx = centroids.argsort(axis=1)[:,::-1]
+
+        cluster_feature_weights = {}
+        for label, centroid in zip(range(labels), sorted_centroid_features_idx):
+            ordered_cluster_feature_weights = centroids[label][sorted_centroid_features_idx[label]]
+            ordered_cluster_features = [self.ordered_feature_names[feature] for feature in centroid]
+            cluster_feature_weights[label] = list(zip(ordered_cluster_features, 
+                                                      ordered_cluster_feature_weights))
+        
+        return cluster_feature_weights
+    
+    def get_feature_imp_unsup2sup(self, X):
+        try:
+            from sklearn.ensemble import RandomForestClassifier
+        except ImportError as IE:
+            print(IE.__class__.__name__ + ": " + IE.message)
+            raise Exception("Please install scikit-learn. " + 
+                            "'unsup2sup' method requires using a classifier"+ 
+                            "and depends on 'sklearn.ensemble.RandomForestClassifier'")
+        
+        cluster_feature_weights = {}
+        for label in range(self.n_clusters):
+            binary_enc = np.vectorize(lambda x: 1 if x == label else 0)(self.labels_)
+            clf = RandomForestClassifier()
+            clf.fit(X, binary_enc)
+
+            sorted_feature_weight_idxes = np.argsort(clf.feature_importances_)[::-1]
+            ordered_cluster_features = np.take_along_axis(
+                np.array(self.ordered_feature_names), 
+                sorted_feature_weight_idxes, 
+                axis=0)
+            ordered_cluster_feature_weights = np.take_along_axis(
+                np.array(clf.feature_importances_), 
+                sorted_feature_weight_idxes, 
+                axis=0)
+            cluster_feature_weights[label] = list(zip(ordered_cluster_features, 
+                                                      ordered_cluster_feature_weights))
+        return cluster_feature_weights
+
+
+# -
+
+# # KMeans Interpret
+
+pipeline.transformers_[1][1].get_feature_names()
+
+
+
+interpreter = KMeansInterp(n_clusters=21, random_state=0, copy_x=False, ordered_feature_names=np.concatenate((cols.to_numpy(), pipeline.transformers_[1][1].get_feature_names()))).fit(X)
+
+for cluster_label, feature_weights in interpreter.feature_importances_.items():    
+    df_feature_weight = pd.DataFrame(feature_weights[:15], columns=["Feature", "Weight"])
+    fig, ax = plt.subplots(figsize=(14,6))
+    sns.barplot(x="Feature", y="Weight", data=df_feature_weight)
+    plt.xticks(rotation=-45, ha="left");
+    ax.tick_params(axis='both', which='major', labelsize=22)
+    plt.title(f'Highest Weight Features in Cluster {cluster_label}', fontsize='xx-large')
+    plt.xlabel('Feature', fontsize=18)
+    plt.ylabel('Weight', fontsize=18)
+
+    plt.show();
+    
+    print('\n\n')
 
 

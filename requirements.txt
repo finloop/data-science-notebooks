@@ -16,3 +16,4 @@ yellowbrick
 lux-api
 tensorflow
 keras
+hdbscan
