@@ -190,6 +190,8 @@ X_train.shape
 
 X_test.shape
 
+df2.fillna(0, inplace=True)
+
 from sklearn.metrics import r2_score
 
 X_pred = decoder.predict(encoder.predict(X_test))
@@ -234,7 +236,7 @@ import umap
 
 import umap.plot
 
-# %cache mapper = umap.UMAP(densmap=True).fit(df3)
+mapper = umap.UMAP(densmap=True).fit(df3)
 
 umap.plot.points(mapper)
 
@@ -325,7 +327,7 @@ sns.relplot(
     data = df2.loc[df2['customer_city'].isin(countries)],
     x = "x",
     y = "y",
-    hue = 'average_delivery_time',
+    hue = 'median_volume',
     height = 12,
     s=200)
 
@@ -432,7 +434,61 @@ for i, ax in enumerate(fig.axes):
     ax.set_ylabel(str(cols[i]))
     sns.violinplot(data=df2,x="cluster", y=cols[i], ax=ax)
 
-df2.groupby("cluster").mean()
+df2.columns
+
+df2.groupby(["cluster","customer_state"]).count().sort_values("customer_unique_id").groupby(level=0).tail(1)
+
+df2.groupby(["cluster","customer_city"]).count().sort_values("customer_unique_id").groupby(level=0).tail(1)
+
+df = df2
+
+# # Frequency piecharts
+
+matplotlib.rcParams.update({'font.size': 22})
+
+# +
+import matplotlib.pyplot as plt
+from math import ceil
+
+cluster_col = "cluster"
+group_by = "customer_city"
+n_first = 4
+clusters = df[cluster_col].unique()
+nclusters = len(clusters)
+
+# Plot 
+fig1, axs = plt.subplots(ceil(sqrt(nclusters)),ceil(sqrt(nclusters)), figsize=(40,30))
+axs = axs.flatten()
+
+for i, cluster in enumerate(clusters):
+    # Locate all data in cluster, then get n_first most popular entries in group_by. Everything else mark as "other".
+    data = df.loc[df[cluster_col] == cluster,:].copy()
+
+    other = data.groupby(group_by).count().sort_values(data.columns[0], ascending=False).iloc[n_first:,:].reset_index()[group_by].array
+    data.loc[data[group_by].isin(other), group_by] = "other"
+
+    # Extract data and labels
+    data = data.groupby(groupby_col).count().iloc[:,0]
+
+    labels = data.index.to_numpy()
+    data = data.to_numpy()
+
+
+    axs[i].pie(data, labels=labels, autopct='%1.1f%%',
+            shadow=True, startangle=90,  textprops={'fontsize': 20})
+    
+    axs[i].set_title(str(cluster), fontsize=25)
+
+plt.show()
+# -
+
+other_countes = df2.groupby(groupby_col).count().sort_values('customer_state', ascending=False).iloc[1000:,:].reset_index()[groupby_col].array
+
+df2.loc[df2.customer_city.isin(other_countes), "customer_city"] = "other"
+
+clusters
+
+df2.groupby(["cluster","customer_city"]).count().sort_values("customer_unique_id").groupby(level=0).tail(3).sort_values("cluster")
 
 df2.mean()
 
