@@ -75,9 +75,7 @@ df
 
 df.info()
 
-# ## Detecting outliers in numerical data
-
-
+# ## Feature extraction
 
 # +
 unique_orders_count = df.groupby(["customer_id"])["order_id"].count() # Count unique orders
@@ -105,8 +103,6 @@ average_expected_delivery_time.name = "average_expected_delivery_time"
 
 # %cache customers2 = customers.set_index("customer_id")
 
-customers2
-
 # %cache df2 = customers2.join([unique_orders_count, nof_moest_popular_sales, max_sale, median_sale, sum_sale, median_volume, average_delivery_time,average_expected_delivery_time],  how="outer")
 
 df2[df2["unique_orders_count"] > 1]
@@ -117,20 +113,24 @@ num_attributes = ["unique_orders_count", "nof_moest_popular_sales", "max_sale", 
 df2['average_expected_delivery_time'] = df2['average_expected_delivery_time']
 df2['average_delivery_time'] = df2['average_delivery_time']
 
-df2.fillna(df2.mean(), inplace=True)
+# %cache df2 = df2.fillna(df2.mean())
 
 df2.info()
 
 df2.groupby("customer_city")["customer_state"].value_counts()
 
+df2.customer_city.nunique()
+
 groupby_col="customer_city"
 
 
-other_countes = df2.groupby(groupby_col).count().sort_values('customer_state', ascending=False).iloc[21:,:].reset_index()[groupby_col].array
+other_countes = df2.groupby(groupby_col).count().sort_values('customer_state', ascending=False).iloc[1000:,:].reset_index()[groupby_col].array
 
 df2.loc[df2.customer_city.isin(other_countes), "customer_city"] = "other"
 
 df2.customer_city.nunique()
+
+# # Pipeline
 
 # +
 from sklearn.preprocessing import StandardScaler, OneHotEncoder
@@ -146,12 +146,74 @@ df_prepared = pipeline.fit_transform(df2)
 df_prepared
 # -
 
-# %cache df3 = df_prepared.toarray()
+df_prepared[:,8:].toarray().shape
+
+# ## Autoencoding sparse features
+
+# +
+from tensorflow import keras
+from tensorflow.keras import layers
+
+encoding_dim = 10
+
+input_vec = keras.Input(shape=(1028,))
+
+# Autoencoder
+encoded = layers.Dense(encoding_dim, activation='relu')(input_vec)
+
+decoded = layers.Dense(1028, activation='sigmoid')(encoded)
+
+autoencoder = keras.Model(input_vec, decoded)
+# -
+
+# ## Encoder and decoder
+
+# +
+# This model maps an input to its encoded representation
+encoder = keras.Model(input_vec, encoded)
+
+# This is our encoded (10-dimensional) input
+encoded_input = keras.Input(shape=(encoding_dim,))
+# Retrieve the last layer of the autoencoder model
+decoder_layer = autoencoder.layers[-1]
+# Create the decoder model
+decoder = keras.Model(encoded_input, decoder_layer(encoded_input))
+# -
+
+autoencoder.compile(optimizer='adam', loss='binary_crossentropy')
+
+from sklearn.model_selection import train_test_split
+
+X_train, X_test = train_test_split(df_prepared[:,8:].toarray(), test_size=0.2)
+
+X_train.shape
+
+X_test.shape
+
+from sklearn.metrics import r2_score
+
+X_pred = decoder.predict(encoder.predict(X_test))
+
+r2_score(X_test, X_pred)
+
+# ## Train encoders
+
+autoencoder.fit(X_train, X_train,
+                epochs=50,
+                batch_size=256,
+                shuffle=True,
+                validation_data=(X_test, X_test))
 
 len(num_attributes)
 
+n = df_prepared[:,:8].toarray()
+
+c = encoder.predict(df_prepared[:,8:].toarray())
+
 import lux
-df3
+df3 = np.concatenate((n,c), axis=1)
+
+df3.shape
 
 # # HDBSCAN
 
@@ -180,6 +242,13 @@ umap.plot.points(mapper)
 
 umap.plot.points(mapper, labels=clusterer.labels_)
 
+# ## UMAP -> HDBSCAN viz
+
+clusterer2 = hdbscan.HDBSCAN(min_cluster_size=300)
+clusterer2 = clusterer2.fit(mapper.embedding_)
+
+umap.plot.points(mapper, labels=clusterer2.labels_)
+
 # + active=""
 # mapper2 = umap.UMAP(densmap=True).fit(df3[np.random.choice(df3.shape[0], 10000, replace=False)])
 
@@ -207,7 +276,7 @@ visualizer.show()
 # -
 
 X = df3
-kmeans = KMeans(n_clusters=21, random_state=0, copy_x=False).fit(X)
+kmeans = KMeans(n_clusters=18, random_state=0, copy_x=False).fit(X)
 
 kmeans.labels_
 
@@ -216,6 +285,16 @@ sns.histplot(kmeans.labels_, bins=max(kmeans.labels_))
 # ## Kmeans viz
 
 umap.plot.points(mapper, labels=kmeans.labels_)
+
+# ## UMAP -> KMEANS viz
+
+visualizer = KElbowVisualizer(model, k=(10,30), timings=True)
+visualizer.fit(mapper.embedding_)
+visualizer.show()
+
+kmeans2 = KMeans(n_clusters=18, random_state=0, copy_x=False).fit(mapper.embedding_)
+
+umap.plot.points(mapper, labels=kmeans2.labels_)
 
 points = mapper.embedding_
 
@@ -246,9 +325,22 @@ sns.relplot(
     data = df2.loc[df2['customer_city'].isin(countries)],
     x = "x",
     y = "y",
-    hue = 'customer_city',
+    hue = 'average_delivery_time',
     height = 12,
     s=200)
+
+df2["average_delivery_time"] = np.log(df2["average_delivery_time"] + 2.73)
+df2["median_sale"] = np.log(df2["median_sale"] + 2.73)
+
+sns.histplot(data=df2, x="average_delivery_time")
+
+sns.histplot(data=df2, x="median_sale")
+
+sns.scatterplot(
+    data = df2,
+    x = "x",
+    y = "y",
+    size = 'average_expected_delivery_time')
 
 df2.columns
 
