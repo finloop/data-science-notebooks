@@ -17,3 +17,4 @@ lux-api
 tensorflow
 keras
 hdbscan
+ipython-cache

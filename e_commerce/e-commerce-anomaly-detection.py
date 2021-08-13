@@ -1,5 +1,10 @@
 #!/usr/bin/env python
 # coding: utf-8
+# # Load cache
+#
+
+import cache_magic
+
 # # Data download
 
 # +
@@ -98,11 +103,11 @@ average_delivery_time.name = "average_delivery_time"
 average_expected_delivery_time.name = "average_expected_delivery_time"
 # -
 
-customers2 = customers.set_index("customer_id")
+# %cache customers2 = customers.set_index("customer_id")
 
 customers2
 
-df2 = customers2.join([unique_orders_count, nof_moest_popular_sales, max_sale, median_sale, sum_sale, median_volume, average_delivery_time,average_expected_delivery_time],  how="outer")
+# %cache df2 = customers2.join([unique_orders_count, nof_moest_popular_sales, max_sale, median_sale, sum_sale, median_volume, average_delivery_time,average_expected_delivery_time],  how="outer")
 
 df2[df2["unique_orders_count"] > 1]
 
@@ -141,7 +146,7 @@ df_prepared = pipeline.fit_transform(df2)
 df_prepared
 # -
 
-df3 = df_prepared.toarray()
+# %cache df3 = df_prepared.toarray()
 
 len(num_attributes)
 
@@ -151,10 +156,10 @@ df3
 # # HDBSCAN
 
 import hdbscan
-clusterer = hdbscan.HDBSCAN(min_cluster_size=600, min_samples=80, cluster_selection_epsilon=0.6)
+# %cache clusterer = hdbscan.HDBSCAN(min_cluster_size=600, min_samples=80, cluster_selection_epsilon=0.6)
 
 #clusterer.fit(df3[np.random.choice(df3.shape[0],50000, replace=False),:])
-clusterer.fit(df3)
+# %cache clusterer = clusterer.fit(df3)
 
 max(clusterer.labels_)
 
@@ -167,7 +172,7 @@ import umap
 
 import umap.plot
 
-mapper = umap.UMAP(densmap=True).fit(df3)
+# %cache mapper = umap.UMAP(densmap=True).fit(df3)
 
 umap.plot.points(mapper)
 
@@ -175,10 +180,13 @@ umap.plot.points(mapper)
 
 umap.plot.points(mapper, labels=clusterer.labels_)
 
-mapper2 = umap.UMAP(densmap=True).fit(df3[np.random.choice(df3.shape[0], 10000, replace=False)])
+# + active=""
+# mapper2 = umap.UMAP(densmap=True).fit(df3[np.random.choice(df3.shape[0], 10000, replace=False)])
 
 
-umap.plot.points(mapper2)
+# + active=""
+# umap.plot.points(mapper2)
+# -
 
 df3.data
 
@@ -199,7 +207,7 @@ visualizer.show()
 # -
 
 X = df3
-kmeans = KMeans(n_clusters=21, random_state=0, copy_x=False, precompute_distances=False).fit(X)
+kmeans = KMeans(n_clusters=21, random_state=0, copy_x=False).fit(X)
 
 kmeans.labels_
 
@@ -215,10 +223,11 @@ points[:,0]
 
 df2
 
-umap.plot.connectivity(mapper, show_points=True, labels=kmeans.labels_)
+# +
+#umap.plot.connectivity(mapper, show_points=True, labels=kmeans.labels_)
 
-# + active=""
-# umap.plot.connectivity(mapper, edge_bundling='hammer')
+# +
+#umap.plot.connectivity(mapper, edge_bundling='hammer')
 # -
 
 import seaborn as sns
@@ -243,7 +252,7 @@ sns.relplot(
 
 df2.columns
 
-smapper = umap.UMAP().fit_transform(X, kmeans.labels_)
+# %cache smapper = umap.UMAP().fit_transform(X, kmeans.labels_)
 
 
 
@@ -281,9 +290,8 @@ sns.relplot(
 
 df2.loc[df2[groupby_col].isin(countries)]
 
-outlier_scores = sklearn.neighbors.LocalOutlierFactor(contamination=0.001428).fit_predict(mapper.embedding_)
-
 import sklearn
+outlier_scores = sklearn.neighbors.LocalOutlierFactor(contamination=0.001428).fit_predict(mapper.embedding_)
 
 outlier_scores
 
@@ -416,8 +424,6 @@ class KMeansInterp(KMeans):
 
 pipeline.transformers_[1][1].get_feature_names()
 
-
-
 interpreter = KMeansInterp(n_clusters=21, random_state=0, copy_x=False, ordered_feature_names=np.concatenate((cols.to_numpy(), pipeline.transformers_[1][1].get_feature_names()))).fit(X)
 
 for cluster_label, feature_weights in interpreter.feature_importances_.items():    
@@ -433,5 +439,36 @@ for cluster_label, feature_weights in interpreter.feature_importances_.items():
     plt.show();
     
     print('\n\n')
+
+cols
+
+df2.loc[df2["cluster"] == 2,"max_sale"].to_numpy()
+
+df2.columns
+
+sns.histplot(np.log(df2.loc[~df2["cluster"].isin([17,18,0,7,13,15,]),"max_sale"].to_numpy()))
+
+sns.histplot(np.log(df2.loc[~df2["cluster"].isin([5,6,16,17,18,0,7,13,15,10]),"max_sale"].to_numpy()))
+
+sns.histplot(np.log(df2.loc[~df2["cluster"].isin([5,6,16,17,18,0,7,13,15]),"max_sale"].to_numpy()))
+
+from scipy.stats import kstest
+
+for i in range(0,21):
+    data = np.log(df2.loc[df2["cluster"] == i,"max_sale"].to_numpy())
+    mean = np.mean(data)
+    std = np.std(data)
+    if kstest((data-mean)/std, 'norm').pvalue > 0.05 :
+        print(kstest((data-mean)/std, 'norm').pvalue)
+        print(i)
+
+for i in range(0,21):
+    data = df2.loc[df2["cluster"] == i,"max_sale"].to_numpy()
+    mean = np.mean(data)
+    std = np.std(data)
+    if kstest((data-mean)/std, 'norm').pvalue > 0.05 :
+        print(i)
+
+sns.histplot(df2["max_sale"])
 
 
