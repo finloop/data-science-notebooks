@@ -47,6 +47,8 @@ df = orders.merge(items, on="order_id").merge(products, on = "product_id").merge
 
 df.info()
 
+df.to_csv("e-commerce.csv")
+
 # # Data cleaning
 
 # +
@@ -130,6 +132,8 @@ df2.loc[df2.customer_city.isin(other_countes), "customer_city"] = "other"
 
 df2.customer_city.nunique()
 
+df2.columns
+
 # # Pipeline
 
 # +
@@ -146,7 +150,7 @@ df_prepared = pipeline.fit_transform(df2)
 df_prepared
 # -
 
-df_prepared[:,8:].toarray().shape
+df_prepared[:,:8].toarray()
 
 # ## Autoencoding sparse features
 
@@ -450,10 +454,13 @@ matplotlib.rcParams.update({'font.size': 22})
 import matplotlib.pyplot as plt
 from math import ceil
 
-cluster_col = "cluster"
-group_by = "customer_city"
-n_first = 4
-clusters = df[cluster_col].unique()
+# Parameters for data. I assume data is in df.
+cluster_col = "cluster" # Column with clusters
+group_by = "customer_city" # Metric to group by "city" etc.
+n_first = 4 # Number of most popular entries of `group_by` in cluster to include
+
+
+clusters = df[cluster_col].unique() 
 nclusters = len(clusters)
 
 # Plot 
