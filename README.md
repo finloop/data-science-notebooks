@@ -14,3 +14,6 @@ Notebooks:
 - [Preparing data](e_commerce/e-commerce-anomaly-detection.ipynb)
 - [Exploring data as time series](e_commerce/e-commerce-time-series.ipynb)
  
+### Animations:
+![](e_commerce/img/prophet_ma3.gif)
+*Smoothed with 3-day moving average, yearly seasonality*
