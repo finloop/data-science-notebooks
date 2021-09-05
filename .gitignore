@@ -130,3 +130,9 @@ dmypy.json
 
 # Jupyter
 .jupyter
+
+# cache_magic
+*/.cache_magic
+
+# Pycharm
+.idea
