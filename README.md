@@ -13,6 +13,7 @@ Notebooks:
 - [Predictions with prophet](e_commerce/Prophet.ipynb)
 - [Preparing data](e_commerce/e-commerce-anomaly-detection.ipynb)
 - [Exploring data as time series](e_commerce/e-commerce-time-series.ipynb)
+- [Frequent pattern mining with fpgrowth](e_commerce/e-commerce-frequent-pattern-mining.ipynb)
  
 ### Animations:
 ![](e_commerce/img/prophet_ma3.gif)
