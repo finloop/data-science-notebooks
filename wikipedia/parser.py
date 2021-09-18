@@ -20,9 +20,21 @@ def crawl(pool: urllib3.PoolManager, url, deep=1, sleep_time=0.5):
     site = pool.request("GET", url)
     soup = BeautifulSoup(site.data, parser="lxml")
     if deep > 0:
-        return {
-            url: [
-                crawl(pool, url_, deep - 1) for url_ in get_links_from_wiki(soup=soup)
-            ]
-        }
-    return {url: get_links_from_wiki(soup=soup)}
+        return (
+            url,
+            [crawl(pool, url_, deep - 1) for url_ in get_links_from_wiki(soup=soup)],
+        )
+    return (url, get_links_from_wiki(soup=soup))
+
+
+def edges(item):
+    edges = []
+    url, elements = item
+    if isinstance(elements, list):
+        for element in elements:
+            if isinstance(element, str):
+                edges.append((url, element))
+            else:
+                edges.append((url, element[0]))
+                edges += edges(element)
+    return edges
