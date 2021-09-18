@@ -3,6 +3,21 @@ This repo contains various analysis on different datasets. Current analysis
 focuses on time series forecasting and anomaly detection.
 
 # Datasets
+## Wikipedia
+Drawing graph of page links.
+
+```python
+import urllib3
+import networkx as nx
+from wikipedia.parser import get_graph
+
+pool = urllib3.PoolManager()
+
+G = get_graph(pool, url = "https://en.wikipedia.org/wiki/Data_mining", deep=1)
+nx.draw(G, nx.circular_layout(G), with_labels=True)
+```
+![Data mining graph](wikipedia/img/Data_science_page.png)
+
 ## E-commerce dataset from brazilian retail store
 ![Predictions](e_commerce/img/dataset.png)
 *Dataset - sampled daily*
