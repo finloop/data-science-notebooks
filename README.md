@@ -4,7 +4,7 @@ focuses on time series forecasting and anomaly detection.
 
 # Datasets
 ## Wikipedia
-Drawing graph of page links.
+### Drawing graph of page links
 
 ```python
 import urllib3
@@ -17,6 +17,29 @@ G = get_graph(pool, url = "https://en.wikipedia.org/wiki/Data_mining", deep=1)
 nx.draw(G, nx.circular_layout(G), with_labels=True)
 ```
 ![Data mining graph](wikipedia/img/Data_science_page.png)
+
+### Finding philosophy page
+
+In this experiment, I'll test the hypothesis that:
+**By going to the first link on any Wikipedia article, you'll end up on the  
+[philosophy](https://en.wikipedia.org/wiki/Philosophy) article.** 
+
+
+```python
+crawl(pool, "https://en.wikipedia.org/wiki/Data_mining", phrase="Philosophy", deep=30, n=1, verbose=True)
+```
+    30 Entering Data_mining
+    29 Entering Data_set
+    
+    ...
+
+       [('https://en.wikipedia.org/wiki/Thought',
+         [('https://en.wikipedia.org/wiki/Ideas',
+           ['https://en.wikipedia.org/wiki/Philosophy'])])])])])])])])])])])])])])])])])])])])])])])])])])
+
+
+
+[Experiment](wikipedia/README.md) and [code](wikipedia/wikipedia.ipynb)
 
 ## E-commerce dataset from brazilian retail store
 ![Predictions](e_commerce/img/dataset.png)
