@@ -23,13 +23,18 @@ def get_links_from_wiki(soup, n=5, prefix="https://en.wikipedia.org"):
         List of links
     """
     arr = []
-    for i, a in enumerate(
-        soup.find("div", class_="mw-parser-output").find("p").find_all("a", href=True)
-    ):
-        if len(arr) > n:
-            break
-        if a["href"].startswith("/wiki"):
-            arr.append(prefix + a["href"])
+
+    # Get all paragraphs
+    for paragraph in soup.find("div", class_="mw-parser-output").find_all("p"):
+        # In each paragraph find all <a href="/wiki/article_name"></a> and
+        # extract "/wiki/article_name"
+        for i, a in enumerate(
+                paragraph.find_all("a", href=True)
+        ):
+            if len(arr) >= n:
+                break
+            if a["href"].startswith("/wiki") and len(a["href"].split("/")) == 3:
+                arr.append(prefix + a["href"])
     return arr
 
 
