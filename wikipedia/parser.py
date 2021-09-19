@@ -33,15 +33,26 @@ def get_links_from_wiki(soup, n=5, prefix="https://en.wikipedia.org"):
     return arr
 
 
-def crawl(pool: urllib3.PoolManager, url, deep=1, sleep_time=0.5, n=5, prefix="https://en.wikipedia.org"):
+def crawl(
+    pool: urllib3.PoolManager,
+    url,
+    phrase=None,
+    deep=1,
+    sleep_time=0.5,
+    n=5,
+    prefix="https://en.wikipedia.org",
+    verbose=False,
+):
     """
-    Crawls given Wikipedia `url` (article) with depth `deep`. For each page
-    extracts `n` urls.
+    Crawls given Wikipedia `url` (article) with max depth `deep`. For each page
+    extracts `n` urls and  if `phrase` is given check if `phrase` in urls.
 
     Parameters
     ----------
     pool : urllib3.PoolManager
         Request pool
+    phrase : str
+        Phrase to search for in urls.
     url : str
         Link to wikipedia article
     deep : int
@@ -58,16 +69,33 @@ def crawl(pool: urllib3.PoolManager, url, deep=1, sleep_time=0.5, n=5, prefix="h
     tuple
         Tuple of url, list
     """
+    if verbose:
+        site = url.split("/")[-1]
+        print(f"{deep} Entering {site}")
+
     time.sleep(sleep_time)
     site = pool.request("GET", url)
     soup = BeautifulSoup(site.data, parser="lxml")
-    if deep > 0:
+    links = get_links_from_wiki(soup=soup, n=n, prefix=prefix)
+    is_phrase_present = any([phrase in link for link in links]) and phrase is not None
+    if deep > 0 and not is_phrase_present:
         return (
             url,
-            [crawl(pool, url_, deep - 1) for url_ in get_links_from_wiki(
-                soup=soup, n=n, prefix=prefix)],
+            [
+                crawl(
+                    pool=pool,
+                    url=url_,
+                    phrase=phrase,
+                    deep=deep - 1,
+                    sleep_time=sleep_time,
+                    n=n,
+                    prefix=prefix,
+                    verbose=verbose,
+                )
+                for url_ in links
+            ],
         )
-    return url, get_links_from_wiki(soup=soup, n=n, prefix=prefix)
+    return url, links
 
 
 def get_edges(tree):
@@ -121,8 +149,9 @@ def get_nodes(edges):
     return nodes
 
 
-def get_graph(pool, url, deep=1, sleep_time=0.5, n=5,
-              prefix="https://en.wikipedia.org"):
+def get_graph(
+    pool, url, deep=1, sleep_time=0.5, n=5, prefix="https://en.wikipedia.org"
+):
     """
     Generates link graph for given Wikipedia article.
 
@@ -145,8 +174,9 @@ def get_graph(pool, url, deep=1, sleep_time=0.5, n=5,
     nx.DiGraph
         Graph of url.
     """
-    tree = crawl(pool=pool, url=url, deep=deep, sleep_time=sleep_time, n=n,
-                 prefix=prefix)
+    tree = crawl(
+        pool=pool, url=url, deep=deep, sleep_time=sleep_time, n=n, prefix=prefix
+    )
     edges = get_edges(tree)
     nodes = get_nodes(edges)
 
