@@ -1,0 +1,16 @@
+version: "3.9"
+services:
+  database:
+    image: "cassandra:latest"
+    networks:
+      - cass-network
+    container_name: "cass"
+    volumes:
+      - cassdata:/var/lib/cassandra
+
+volumes:
+  cassdata:
+
+networks:
+  cass-network:
+    name: "cass-network"
