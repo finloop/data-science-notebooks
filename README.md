@@ -24,6 +24,7 @@ In this experiment, I'll test the hypothesis that:
 **By going to the first link on any Wikipedia article, you'll end up on the  
 [philosophy](https://en.wikipedia.org/wiki/Philosophy) article.** 
 
+For more info on the subject go to my [dev.to article](https://dev.to/finloop/getting-to-philosophy-with-python-4nmc).
 
 ```python
 crawl(pool, "https://en.wikipedia.org/wiki/Data_mining", phrase="Philosophy", deep=30, n=1, verbose=True)
@@ -56,3 +57,15 @@ Notebooks:
 ### Animations:
 ![](e_commerce/img/prophet_ma3.gif)
 *Smoothed with 3-day moving average, yearly seasonality*
+
+## User interactions database
+
+This dataset contains data from a news website. Each csv file contains info 
+about sessions, clicks on articles, time of interaction etc. 
+
+In file [frequency_analysis.ipynb](user_interactions/freqency_analysis.ipynb)
+the distribution of page on with the article appears is analysed. For any
+session I added the order of articles. Then I filtered for that one article and
+created histograms for each hour.
+
+![Histograms of given article (119592) order in sessions](user_interactions/img/histograms.png)
