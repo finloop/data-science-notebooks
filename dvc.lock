@@ -1,0 +1,70 @@
+schema: '2.0'
+stages:
+  prepare:
+    cmd: python3 mlops/src/prepare.py
+    deps:
+    - path: mlops/src/prepare.py
+      md5: 832b8926b7c460e7a81377a89ba42d76
+      size: 986
+    params:
+      params.yaml:
+        prepare.categories:
+        - comp.graphics
+        - rec.sport.baseball
+    outs:
+    - path: mlops/data/prepared
+      md5: 77cdc4b415254bc15c5d109816504915.dir
+      size: 3277682
+      nfiles: 2
+  featurize:
+    cmd: python3 mlops/src/featurize.py mlops/data/prepared mlops/data/features
+    deps:
+    - path: mlops/data/prepared
+      md5: 77cdc4b415254bc15c5d109816504915.dir
+      size: 3277682
+      nfiles: 2
+    - path: mlops/src/featurize.py
+      md5: 20fea8cdee321d4078e42451352a7222
+      size: 1685
+    outs:
+    - path: mlops/data/features
+      md5: 75bcc0588e8df579495caae792053150.dir
+      size: 418297694
+      nfiles: 2
+  train:
+    cmd: python3 mlops/src/train.py mlops/data/features model.pkl
+    deps:
+    - path: mlops/data/features
+      md5: 75bcc0588e8df579495caae792053150.dir
+      size: 418297694
+      nfiles: 2
+    - path: mlops/src/train.py
+      md5: 4e2d26dcdf7e68de9b6c639ef4a15086
+      size: 829
+    params:
+      params.yaml:
+        train.alpha: 0.1
+    outs:
+    - path: model.pkl
+      md5: 2c2d3bf17a37e4f06efd1246f0784361
+      size: 850891
+  evaluate:
+    cmd: python3 mlops/src/evaluate.py model.pkl mlops/data/features scores.json plots.json
+    deps:
+    - path: mlops/data/features
+      md5: 75bcc0588e8df579495caae792053150.dir
+      size: 418297694
+      nfiles: 2
+    - path: mlops/src/prepare.py
+      md5: 832b8926b7c460e7a81377a89ba42d76
+      size: 986
+    - path: model.pkl
+      md5: 2c2d3bf17a37e4f06efd1246f0784361
+      size: 850891
+    outs:
+    - path: plots.json
+      md5: 5fa711793a7eca66e30dfa38023ef91a
+      size: 34801
+    - path: scores.json
+      md5: add0286d0f09f2e0da7c5d69391ad60a
+      size: 27

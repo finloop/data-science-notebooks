@@ -1,0 +1,37 @@
+stages:
+  prepare:
+    cmd: python3 mlops/src/prepare.py
+    deps:
+    - mlops/src/prepare.py
+    params:
+    - prepare.categories
+    outs:
+    - mlops/data/prepared
+  featurize:
+    cmd: python3 mlops/src/featurize.py mlops/data/prepared mlops/data/features
+    deps:
+    - mlops/data/prepared
+    - mlops/src/featurize.py
+    outs:
+    - mlops/data/features
+  train:
+    cmd: python3 mlops/src/train.py mlops/data/features model.pkl
+    deps:
+    - mlops/data/features
+    - mlops/src/train.py
+    params:
+    - train.alpha
+    outs:
+    - model.pkl
+  evaluate:
+    cmd: python3 mlops/src/evaluate.py model.pkl mlops/data/features scores.json plots.json
+    deps:
+    - mlops/data/features
+    - mlops/src/prepare.py
+    - model.pkl
+    metrics:
+    - scores.json:
+        cache: false
+    plots:
+    - plots.json:
+        cache: false
