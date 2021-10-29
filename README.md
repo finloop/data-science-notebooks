@@ -69,3 +69,8 @@ session I added the order of articles. Then I filtered for that one article and
 created histograms for each hour.
 
 ![Histograms of given article (119592) order in sessions](user_interactions/img/histograms.png)
+
+## Image processing
+
+Animation of how Sobel edge detetion works:
+![Edge detection with Sobel](image_processig/basic_animation.mp4)
